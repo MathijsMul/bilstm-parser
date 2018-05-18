@@ -121,13 +121,6 @@ class Configuration:
             self.right_arc(transition[1])
 
     def extract_features(self, feature_dict):
-        # self.features = {'stack': [-3, -2, -1],
-        #                  'buffer': [0],}
-
-        #buffer_features = [self.buffer[idx] for idx in feature_dict['buffer']]
-        #stack_features = [self.stack[idx] for idx in feature_dict['stack']]
-
-        # TODO: currently None for empty positions
         buffer_features = [self.buffer[idx] for idx in feature_dict['buffer']]
         stack_features = [self.stack[idx] for idx in feature_dict['stack']]
         return(stack_features + buffer_features)
@@ -142,18 +135,3 @@ class Configuration:
 
     def is_empty(self):
         return(len(self.stack) == 1 and len(self.buffer) == 0)
-
-# s = ['all', 'kids', 'are', 'crying']
-# c = Configuration(s)
-# c.pretty_print()
-# c.shift()
-# c.shift()
-# c.pretty_print()
-# c.right_arc()
-# c.pretty_print()
-# print(len(c.buffer))
-# c.shift()
-# c.pretty_print()
-# print(c.extract_features({'buffer': [0],
-#                          'stack': [-1,-2]}))
-

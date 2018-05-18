@@ -3,9 +3,8 @@ Differences with Kipperwasser & Goldberg:
 - no error exploration
 
 todo:
-- unknown words
 - hinge loss
 - 2 layers lstm
-- only training batch size 1
 - softmax function? (not in goldberg and kipperwasser)
 - tokenize vocabulary?
+- compare performance with elikip github code

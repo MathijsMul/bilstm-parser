@@ -3,9 +3,6 @@ from utils import transition_from_code
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
-import pprint
-
-pp = pprint.PrettyPrinter(indent=4)
 
 class BiLSTMParser(nn.Module):
     def __init__(self, name, vocab, pos_tags, word_dim, pos_dim, num_layers_lstm, hidden_units_lstm, hidden_units_mlp, arc_labels, features):
@@ -48,24 +45,6 @@ class BiLSTMParser(nn.Module):
             # def features:  top 3 items on the stack and the first item on the buffer
             self.features = {'stack' : [-3, -2, -1],
                              'buffer' : [0]}
-
-    def sentence_inputs(self, words, pos_tags):
-        """
-
-        :param sentence:  [(word, pos_tag), ..., (word, pos_tag)]
-        :return: (sentence_length x (word_dim + pos_dim)) tensor containing concatenated word and POS embeddings
-        """
-        word_idxs = Variable(torch.LongTensor([self.word_dict[word] for word in words]))
-        pos_idxs = Variable(torch.LongTensor([self.pos_dict[pos] for pos in pos_tags]))
-        word_embeddings = self.word_emb(word_idxs)
-        pos_embeddings = self.pos_emb(pos_idxs)
-        word_pos_cat = torch.cat((word_embeddings, pos_embeddings), 1).unsqueeze(1)
-        return (word_pos_cat)
-
-    def bilstm_representations(self, words, pos_tags):
-        sentence_input = self.sentence_inputs(words, pos_tags)
-        lstm_output, states = self.bilstm(sentence_input) # output: (seq_len, batch, hidden_size * num_directions)
-        return(lstm_output)
 
     def forward(self, words, pos_tags, features=None, output_to_conll=False):
 
@@ -117,11 +96,29 @@ class BiLSTMParser(nn.Module):
         else:
             return(outputs)
 
+    def sentence_inputs(self, words, pos_tags):
+        """
+
+        :param sentence:  [(word, pos_tag), ..., (word, pos_tag)]
+        :return: (sentence_length x (word_dim + pos_dim)) tensor containing concatenated word and POS embeddings
+        """
+        word_idxs = Variable(torch.LongTensor([self.word_dict[word] for word in words]))
+        pos_idxs = Variable(torch.LongTensor([self.pos_dict[pos] for pos in pos_tags]))
+        word_embeddings = self.word_emb(word_idxs)
+        pos_embeddings = self.pos_emb(pos_idxs)
+        word_pos_cat = torch.cat((word_embeddings, pos_embeddings), 1).unsqueeze(1)
+        return (word_pos_cat)
+
     def classification_layers(self, lstm_features):
         mlp_hidden = self.mlp_in(lstm_features)
         mlp_hidden_activated = self.tanh(mlp_hidden)
         mlp_output = self.mlp_out(mlp_hidden_activated)
         return(mlp_output)
+
+    def bilstm_representations(self, words, pos_tags):
+        sentence_input = self.sentence_inputs(words, pos_tags)
+        lstm_output, states = self.bilstm(sentence_input) # output: (seq_len, batch, hidden_size * num_directions)
+        return(lstm_output)
 
     def get_bilstm_representation(self, word_idx):
         if word_idx is None:
@@ -140,5 +137,4 @@ class BiLSTMParser(nn.Module):
             for arc in all_labeled_arcs:
                 if arc[1] == str(word_index):
                     conll_output += str(word_index) + '\t' + 'WORD' + '\t' + '_' + '\t' + 'TAG' + '\t' + 'TAG' + '\t' + '_' + '\t' + str(arc[0]) + '\t' + str(arc[2]) + '\t' + '_' + '\t' + '_' + '\n'
-        #conll_output += '\n'
         return(conll_output)

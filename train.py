@@ -1,8 +1,4 @@
-from data_loader import ConllLoader
-from model import BiLSTMParser
-from test import test
-from utils import transition_code
-import pprint
+from utils import transition_code, test
 import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
@@ -63,9 +59,9 @@ class ModelTrainer:
                 # show loss statistics
                 if self.show_loss:
                     running_loss += loss.item()
-                    if (idx + 1) % 10 == 0:  # print every 10 sentences
+                    if (idx + 1) % 100 == 0:  # print every 10 sentences
                         print('[%d, %5d] loss: %.3f' %
-                              (epoch + 1, idx, running_loss / 10))
+                              (epoch + 1, idx + 1, running_loss / 100))
                         running_loss = 0.0
 
             if test_each_epoch:
