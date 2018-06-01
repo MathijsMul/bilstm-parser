@@ -3,8 +3,6 @@ from data_loader import ConllLoader
 from train import ModelTrainer
 from model import BiLSTMParser
 
-#TODO: OPTIMIZE BATCH SIZE AND LEARNING RATE, THESE HAVE TO BE BALANCED
-
 if __name__ == '__main__':
     parser = OptionParser()
     parser.add_option("--train", dest="train_file", help="CONLL train data file", default='data/train-stanford-raw.conll')
@@ -19,17 +17,20 @@ if __name__ == '__main__':
     parser.add_option("--criterion", dest="criterion", help="Loss function", default='CrossEntropy')
     parser.add_option("--optimizer", dest="optimizer", help="Optimizer algorithm", default='Adam')
     parser.add_option("--l2", type="float", dest="l2_penalty", help="L2 regularization term", default=0.0)
-    parser.add_option("--alpha", type="float", dest="alpha", help="Parameter word dropout probability", default=0.25)
+    parser.add_option("--alpha", type="float", dest="alpha", help="Parameter for word dropout probability", default=0.25)
     parser.add_option("--model_name", dest="model_name", help="Name of model")
+    parser.add_option("--run", type="int", dest="run", help="Run index", default=1)
 
     (options, args) = parser.parse_args()
 
+    # Load train data
     datamanager_train_file = ConllLoader(input_file=options.train_file, oracle=True, alpha=options.alpha)
     datamanager_train_file.load_file()
     vocab = datamanager_train_file.vocab
     pos_tags = datamanager_train_file.pos_tags
     arc_labels = datamanager_train_file.arc_labels
 
+    # If provided, load test data
     if not options.test_file is None:
         datamanager_test_file = ConllLoader(input_file=options.test_file, oracle=False)
         datamanager_test_file.load_file()
@@ -53,6 +54,7 @@ if __name__ == '__main__':
                            epochs=options.num_epochs,
                            criterion=options.criterion,
                            optimizer=options.optimizer,
+                           run=options.run,
                            l2_penalty=options.l2_penalty)
 
     trainer.train(test_each_epoch=True)

@@ -5,6 +5,37 @@ import torch.nn as nn
 from torch.autograd import Variable
 
 class BiLSTMParser(nn.Module):
+    """
+    Bidirectional LSTM parser inspired by Kiperwasser & Goldberg (2016): https://aclweb.org/anthology/Q16-1023.
+
+    Attributes:
+        name: name of the model
+        word_dim: word embedding dimensionality
+        pos_dim: POS tag embedding dimensionality
+        input_size: dimension of LSTM input
+        num_layers_lstm: nr of LSTM layers
+        hidden_units_lstm: dimensionality of hidden LSTM layer
+        hidden_units_mlp: dimensionality of hidden MLP (classification) layer
+        arc_labels: list of arc labels
+        arc_label_to_idx: dictionary from arc labels to indices
+        arc_idx_to_label: inverse of the above dictionary
+        num_transitions: number of different transitions (classes)
+        vocab: vocabulary
+        pos_tags: POS tags
+        word_dict: dictionary from vocabulary words to indices
+        pos_dict: dictionary from POS tags to indices
+        voc_size: vocabulary size
+        pos_size: number of POS tags
+        word_emb: word embedding matrix
+        pos_emb: POS tag embedding matrix
+        bilstm: bidirectional LSTM cell
+        mlp_in: MLP input layer
+        tanh: Tanh nonlinearity for MLP
+        mlp_out: MLP output layer
+        bilstm_representations_batch: stored bidirectional LSTM representations for input batch (sentence)
+        features: locations of feature items from arc hybrid configuration (stack & buffer)
+    """
+
     def __init__(self, name, vocab, pos_tags, word_dim, pos_dim, num_layers_lstm, hidden_units_lstm, hidden_units_mlp, arc_labels, features):
         super(BiLSTMParser, self).__init__()
 
@@ -30,10 +61,10 @@ class BiLSTMParser(nn.Module):
         self.word_emb = nn.Embedding(self.voc_size, self.word_dim) # word embedding matrix
         self.pos_emb = nn.Embedding(self.pos_size, self.pos_dim) # POS embedding matrix
 
-        self.bilstm = nn.LSTM(input_size = self.input_size,
-                              hidden_size= self.hidden_units_lstm,
-                              num_layers= self.num_layers_lstm,
-                              bidirectional= True) # bidirectional LSTM unit
+        self.bilstm = nn.LSTM(input_size=self.input_size,
+                              hidden_size=self.hidden_units_lstm,
+                              num_layers=self.num_layers_lstm,
+                              bidirectional=True) # bidirectional LSTM unit
 
         self.mlp_in = nn.Linear(in_features = 2 * 4 * self.hidden_units_lstm, out_features = self.hidden_units_mlp) # MLP to-hidden matrix, assuming 4 bidirectional features
         self.tanh = nn.Tanh() # MLP nonlinearity
@@ -48,7 +79,7 @@ class BiLSTMParser(nn.Module):
 
     def forward(self, words, pos_tags, features=None, output_to_conll=False):
 
-        # precompute intermediate bidirectional representations of sentence words
+        # Precompute intermediate bidirectional representations of sentence words
         length_sentence = len(words)
         words = [word if word in self.vocab else 'UNK-WORD' for word in words]
 
@@ -59,7 +90,7 @@ class BiLSTMParser(nn.Module):
             conll_output = ''
 
         if features is None:
-            # do configutation - transition - configuration one by one (sequentially)
+            # Do configutation - transition - configuration one by one (sequentially)
             outputs = []
             c = Configuration([str(i) for i in range(length_sentence)])
 
@@ -81,7 +112,7 @@ class BiLSTMParser(nn.Module):
                 conll_output += conll_fragment
 
         else:
-            # during training features (sequences of configurations) are given
+            # During training the features (sequences of configurations) are given
             num_configurations = len(features)
             all_input_features = torch.zeros((num_configurations, 2 * 4 * self.hidden_units_lstm)) # initialize container
             for idx_conf, configuration in enumerate(features):
@@ -98,10 +129,12 @@ class BiLSTMParser(nn.Module):
 
     def sentence_inputs(self, words, pos_tags):
         """
+        Translate sentence to sequence of LSTM inputs (concatenations of word embeddings and POS tags).
 
         :param sentence:  [(word, pos_tag), ..., (word, pos_tag)]
         :return: (sentence_length x (word_dim + pos_dim)) tensor containing concatenated word and POS embeddings
         """
+
         word_idxs = Variable(torch.LongTensor([self.word_dict[word] for word in words]))
         pos_idxs = Variable(torch.LongTensor([self.pos_dict[pos] for pos in pos_tags]))
         word_embeddings = self.word_emb(word_idxs)
@@ -117,17 +150,24 @@ class BiLSTMParser(nn.Module):
 
     def bilstm_representations(self, words, pos_tags):
         sentence_input = self.sentence_inputs(words, pos_tags)
-        lstm_output, states = self.bilstm(sentence_input) # output: (seq_len, batch, hidden_size * num_directions)
+        lstm_output, _ = self.bilstm(sentence_input) # output: (seq_len, batch, hidden_size * num_directions)
         return(lstm_output)
 
     def get_bilstm_representation(self, word_idx):
         if word_idx is None:
-            # return zero tensor for emtpy feature positions
+            # Return zero tensor for emtpy feature positions
             return(torch.zeros((1, 2 * self.hidden_units_lstm)))
         else:
             return(self.bilstm_representations_batch[int(word_idx)])
 
     def arcs_to_conll(self, arcs):
+        """
+        Translate arcs for a sentence to CONLL fragment.
+
+        :param arcs: Arcs object
+        :return: CONLL fragment
+        """
+
         conll_output = ''
         all_labeled_arcs = arcs.contents
         number_words = len(all_labeled_arcs)

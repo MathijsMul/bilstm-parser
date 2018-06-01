@@ -1,13 +1,18 @@
 import pprint
 
 class Stack:
+    """
+    Class for stack in arc hybrid configuration system.
+
+    Attributes:
+        contents: words currently in stack
+    """
+
     def __init__(self):
         self.contents = []
 
     def __getitem__(self, item):
-        if abs(item) > len(self):
-            return(None)
-        else:
+        if abs(item) <= len(self):
             return self.contents[item]
 
     def __len__(self):
@@ -20,13 +25,18 @@ class Stack:
         self.contents.append(word)
 
 class Buffer:
+    """
+    Class for buffer in arc hybrid configuration system.
+
+    Attributes:
+        contents: words currently in buffer
+    """
+
     def __init__(self, sentence):
         self.contents = [word for word in sentence]
 
     def __getitem__(self, item):
-        if item >= len(self):
-            return(None)
-        else:
+        if item < len(self):
             return self.contents[item]
 
     def __len__(self):
@@ -36,6 +46,13 @@ class Buffer:
         self.contents.pop(0)
 
 class Arcs:
+    """
+    Class for arcs in arc hybrid configuration system.
+
+    Attributes:
+        contents: arcs inferred up until present moment, formatted as (head, modifier, label)
+    """
+
     def __init__(self):
         self.contents = []
 
@@ -44,10 +61,12 @@ class Arcs:
 
     def add(self, arc):
         """
-        add arc
+        Add arc
+
         :param arc: (head, modifier, label)
         :return:
         """
+
         self.contents.append(arc)
 
     def load(self, arcs_given):
@@ -57,22 +76,36 @@ class Arcs:
         return(list(map(lambda triple: (triple[0], triple[1]), self.contents)))
 
     def contains(self, head, dependent):
-        # check if (head, dependent, label) in arcs for any label
+        # Check if (head, dependent, label) in arcs for any label
+
         unlabeled_arcs = self.unlabeled_arcs()
         return((head, dependent) in unlabeled_arcs)
 
     def child_still_has_children(self, child):
-        # check if word has no dependents of its own before being reduced
+        # Check if word has no dependents of its own before being reduced
+
         unlabeled_arcs = self.unlabeled_arcs()
         (parents, children) = zip(*unlabeled_arcs)
         return(child in parents)
 
     def get_label(self, head, dependent):
+        # Get label of included arc
+
         index_arc = self.unlabeled_arcs().index((head, dependent))
         label = self.contents[index_arc][2]
         return(label)
 
 class Configuration:
+    """
+    Total arc hybrid configuration.
+
+    Attributes:
+        stack: Stack object
+        buffer: Buffer object
+        arcs: Arcs object
+        contents: dictionary of the above
+    """
+
     def __init__(self, sentence):
         self.stack = Stack()
         self.buffer = Buffer(sentence)
@@ -87,7 +120,7 @@ class Configuration:
 
     def shift(self):
         """
-        top word of buffer shifted to stack
+        Top word of buffer shifted to stack.
 
         :return:
         """
@@ -96,7 +129,7 @@ class Configuration:
 
     def left_arc(self, label):
         """
-        top word of stack depends on top word of buffer
+        Top word of stack depends on top word of buffer.
 
         :return:
         """
@@ -105,7 +138,7 @@ class Configuration:
 
     def right_arc(self, label):
         """
-        top word of stack depends on second word of stack
+        Top word of stack depends on second word of stack.
 
         :return:
         """
@@ -126,6 +159,13 @@ class Configuration:
         return(stack_features + buffer_features)
 
     def transition_admissible(self, transition):
+        """
+        Check if transition is admissible.
+
+        :param transition: candidate transition
+        :return: boolean
+        """
+
         if transition == 'shift':
             return(len(self.buffer) > 0)
         elif transition[0] == 'left':

@@ -1,10 +1,30 @@
-from arc_hybrid import Stack, Buffer, Arcs, Configuration
+from arc_hybrid import Arcs, Configuration
 import numpy as np
 import pprint
 from random import shuffle
 from collections import Counter
 
 class ConllLoader:
+    """
+    Class responsible for loading CONLL files and inferring the gold transitions from training data.
+
+    Attributes:
+        file: path to CONLL file
+        compute_gold: whether gold transitions (oracle values) must be inferred (usually only for training data)
+        alpha: parameter for word dropout probability (and replacement with UNK-WORD)
+        sentences: list of dictionaries with information about sentences in data
+        sentences_unshuffled: sentences in original order
+        vocab: list of vocabulary words in data
+        pos_tags: list of POS tags in data
+        arc_labels: list of arc labels in data
+        features: locations of feature items from arc hybrid configuration (stack & buffer)
+        max_sentence_idx: maximum number of sentences from data to process
+        num_samples: number of sentences in data
+        num_tokens: number of vocabulary tokens in data
+        avg_sentence_length: average sentence length
+        word_dropout_probabilities: Counter containing word dropout probabilities
+    """
+
     def __init__(self, input_file, oracle, alpha=0.25, features='default', max_num_sentences=np.inf):
         self.file = input_file
         self.compute_gold = oracle
@@ -15,12 +35,17 @@ class ConllLoader:
         self.arc_labels = []
 
         if features == 'default':
-            # def features:  top 3 items on the stack and the first item on the buffer
+            # Default features:  top 3 items on the stack and the first item on the buffer (following K&G)
             self.features = {'stack' : [-3, -2, -1],
                              'buffer' : [0]}
         self.max_sentence_idx = max_num_sentences
 
     def load_file(self):
+        """
+        Load CONLL data file into list of dictionaries containing relevant information per sentence.
+
+        :return:
+        """
         print('Loading data from %s' % self.file)
         with open(self.file, 'r') as f:
             lines = f.readlines()
@@ -55,7 +80,7 @@ class ConllLoader:
         self.avg_sentence_length = self.num_tokens / self.num_samples
         print('Avg. sentence length: %.3f' % self.avg_sentence_length)
 
-        # compute word dropout probabilities (for replacement with UNK-WORD
+        # Compute word dropout probabilities (for replacement with UNK-WORD
         counter = Counter(self.vocab)
         self.word_dropout_probabilities = counter
         for key in self.word_dropout_probabilities:
@@ -67,6 +92,12 @@ class ConllLoader:
         self.sentences_unshuffled = list(self.sentences)
 
     def analyse_sentence(self, sentence):
+        """
+        Extract required information for individual sentence.
+
+        :param sentence:
+        :return:
+        """
         words = ['ROOT'] + [s[1] for s in sentence] # add ROOT
         word_to_idx = {word : idx for idx, word in enumerate(words)}
         pos_tags = ['ROOT'] + [s[4] for s in sentence]
@@ -79,6 +110,14 @@ class ConllLoader:
         return(info_dict)
 
     def infer_gold_transitions(self, sentence_info, sanity_check=True):
+        """
+        Determine the sequence of transitions that an ideal parser (oracle) would follow.
+
+        :param sentence_info: dictionary containing information about sentence
+        :param sanity_check: whether final oracle arcs must be compared with actual arcs
+        :return:
+        """
+
         c = Configuration([str(i) for i in range(sentence_info['length'])])
         arcs_given = Arcs()
         arcs_given.load(list(sentence_info['arcs']))
@@ -86,14 +125,15 @@ class ConllLoader:
             arcs_given_original = list(sentence_info['arcs'])
 
         features = [c.extract_features(self.features)]
-        # always start with shift
+
+        # Always start with shift
         c.shift()
         transitions = ['shift']
 
         while ((len(c.stack) + len(c.buffer)) > 1):
             features += [c.extract_features(self.features)]
 
-            if not c.stack[-1] == '0': # never reduce ROOT
+            if not c.stack[-1] == '0': # Never reduce ROOT
                 if arcs_given.contains(c.stack[-2], c.stack[-1]):
                     if not arcs_given.child_still_has_children(c.stack[-1]):
                         label = arcs_given.get_label(c.stack[-2], c.stack[-1])
@@ -120,7 +160,7 @@ class ConllLoader:
                 transitions += ['shift']
                 c.shift()
             else:
-                # final left-reduction
+                # Final left-reduction
                 label = arcs_given.get_label(c.stack[-2], c.stack[-1])
                 transitions += [('right', label)]
                 c.right_arc(label)
@@ -137,4 +177,10 @@ class ConllLoader:
         pp.pprint(self.sentences[:n])
 
     def shuffle(self):
+        """
+        Randomize sentence order.
+
+        :return:
+        """
+
         shuffle(self.sentences)

@@ -2,18 +2,20 @@ import subprocess
 
 def test(model, datamanager_test_file, output_conll, batch_size=1):
     """
-    always take batch size 1, because consecutive predictions depend on each other so they cannot be parallelized
+    Test model on data.
 
-    datamanager_test_file : ConllLoader object
+    :param model: BiLSTMParser object to test
+    :param datamanager_test_file: ConllLoader for test data
+    :param output_conll: location of CONLL containing data as returned by model
+    :param batch_size: number of sentences to test per time,
+        must be 1 because consecutive predictions depend on each other so parallelization is not possible at present
+    :return: evaluation results
     """
 
     test_file = datamanager_test_file.file
-    output_conll = 'conlls/' + output_conll
     output_conll_file = open(output_conll, 'w')
 
     for idx, sentence in enumerate(datamanager_test_file.sentences_unshuffled):
-        #if idx % 99 == 0:
-        #    print('Testing batch (sentence) %i / %i' % (idx + 1, num_test_batches))
         words = sentence['words']
         pos_tags = sentence['pos_tags']
         _, conll_fragment = model(words, pos_tags, output_to_conll=True)
@@ -26,6 +28,14 @@ def test(model, datamanager_test_file, output_conll, batch_size=1):
     return(eval_results)
 
 def eval(conll_gold, conll_predicted):
+    """
+    Calls eval.pl to evaluate CONLL gold file against CONLL predicted by model.
+
+    :param conll_gold: gold CONLL
+    :param conll_predicted: predicted CONLL
+    :return: (labeled_attachment_score, unlabeled_attachment_score, label_accuracy_score)
+    """
+
     eval_output = subprocess.check_output(['perl',
                                  'eval.pl',
                                  '-q',
@@ -40,6 +50,14 @@ def eval(conll_gold, conll_predicted):
     return(labeled_attachment_score, unlabeled_attachment_score, label_accuracy_score)
 
 def transition_code(transition, arc_label_to_idx):
+    """
+    Encode transition.
+
+    :param transition: 'shift', ('left', l) or ('right', l) for l some label
+    :param arc_label_to_idx: dictionary mapping arc labels to indices
+    :return: transition code
+    """
+
     if transition == 'shift':
         return 0
     elif transition[0] == 'left':
@@ -48,6 +66,14 @@ def transition_code(transition, arc_label_to_idx):
         return (arc_label_to_idx[transition[1]] + len(arc_label_to_idx))
 
 def transition_from_code(code, arc_idx_to_label):
+    """
+    Decode transition.
+
+    :param code: transition code
+    :param arc_idx_to_label: dictionary mapping indices to arc labels
+    :return: transition 'shift', ('left', l) or ('right', l) for l some label
+    """
+
     if code == 0:
         return('shift')
     else:
@@ -56,10 +82,15 @@ def transition_from_code(code, arc_idx_to_label):
         else:
             return (('right', arc_idx_to_label[code - len(arc_idx_to_label)]))
 
-def hinge_loss(outputs, target):
-    raise(NotImplementedError)
-
 def crop_file(file_in, nr_sentences):
+    """
+    For development purposes: crop a data file to first n sentences.
+
+    :param file_in: file path
+    :param nr_sentences: n
+    :return:
+    """
+
     file_out = file_in.split('.')[-2] + str(nr_sentences) + '.conll'
     with open(file_in, 'r') as f_in:
         with open(file_out, 'w') as f_out:
