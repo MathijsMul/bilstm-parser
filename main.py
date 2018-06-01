@@ -10,7 +10,7 @@ if __name__ == '__main__':
     parser.add_option("--epochs", type="int", dest="num_epochs", help="Number of training epochs")
     parser.add_option("--word_dim", type="int", dest="word_dim", help="Word embedding dimensionality", default=100)
     parser.add_option("--pos_dim", type="int", dest="pos_dim", help="POS tag embedding dimensionality", default=25)
-    parser.add_option("--num_layers_lstm", type="int", dest="num_layers_lstm", help="Nr of LSTM layers")
+    parser.add_option("--num_layers_lstm", type="int", dest="num_layers_lstm", help="Nr of LSTM layers", default=1)
     parser.add_option("--hidden_units_lstm", type="int", dest="hidden_units_lstm", help="Nr of hidden LSTM units", default=125)
     parser.add_option("--hidden_units_mlp", type="int", dest="hidden_units_mlp", help="Nr of hidden MLP units", default=100)
     parser.add_option("--features", dest="features", help="Which features to select from stack-buffer configuration", default='default')

@@ -46,6 +46,7 @@ class ConllLoader:
 
         :return:
         """
+
         print('Loading data from %s' % self.file)
         with open(self.file, 'r') as f:
             lines = f.readlines()
@@ -98,7 +99,8 @@ class ConllLoader:
         :param sentence:
         :return:
         """
-        words = ['ROOT'] + [s[1] for s in sentence] # add ROOT
+
+        words = ['ROOT'] + [s[1] for s in sentence] # Add ROOT at start
         word_to_idx = {word : idx for idx, word in enumerate(words)}
         pos_tags = ['ROOT'] + [s[4] for s in sentence]
         arcs = [(s[6], s[0], s[7]) for s in sentence]
@@ -121,6 +123,7 @@ class ConllLoader:
         c = Configuration([str(i) for i in range(sentence_info['length'])])
         arcs_given = Arcs()
         arcs_given.load(list(sentence_info['arcs']))
+
         if sanity_check:
             arcs_given_original = list(sentence_info['arcs'])
 
