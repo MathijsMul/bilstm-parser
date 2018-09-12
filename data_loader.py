@@ -81,7 +81,7 @@ class ConllLoader:
         self.avg_sentence_length = self.num_tokens / self.num_samples
         print('Avg. sentence length: %.3f' % self.avg_sentence_length)
 
-        # Compute word dropout probabilities (for replacement with UNK-WORD
+        # Compute word dropout probabilities (for replacement with UNK-WORD)
         counter = Counter(self.vocab)
         self.word_dropout_probabilities = counter
         for key in self.word_dropout_probabilities:
